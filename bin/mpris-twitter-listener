@@ -1,0 +1,154 @@
+#!/usr/bin/env python
+# Detect Python that is not version 2 and try to use python2
+# Has to be version 2 because of tweepy
+from os.path import abspath, expanduser
+import re
+import sys
+import subprocess as sp
+import inspect
+
+try:
+    major_version = sys.version_info.major
+except AttributeError:
+    major_version = sys.version_info[0]
+
+if major_version != 2:
+    python_2_path = str(sp.check_output('which python2', shell=True))
+    python_2_path = python_2_path[2:-3]
+    this_script = abspath(inspect.getfile(inspect.currentframe()))
+    args = sys.argv
+    command_line = [python_2_path, this_script]
+    has_python_in_arg_0 = re.match(r'python[23](\..+)?$', args[0])
+
+    if not has_python_in_arg_0:
+        args = args[1:]
+    else:
+        args = args[2:]
+
+    command_line.extend(args)
+
+    try:
+        sp.call(command_line)
+    except OSError:
+        print('Unable to find Python 2. This script requires Python 2 to run')
+        sys.exit(1)
+
+    sys.exit(0)
+
+from dbus.mainloop.glib import DBusGMainLoop
+import argparse
+import dbus
+import gobject
+import time
+import traceback
+import tweepy
+import yaml
+
+CODE_SHORT_URL = 'http://bit.ly/YfR1Nm'
+CONF_FILE = expanduser('~/.mpris-twitter-listener.yml')
+
+# Initialised in __main__
+auth = None
+verbose = False
+config = {}
+
+
+class ConfigError(Exception):
+    pass
+
+
+def dbg_print(message):
+    global verbose
+
+    if verbose:
+        print(message)
+
+
+
+def handler(sender, dict, arr):
+    try:
+        if dict['Metadata']:
+            # Hopefully filter for music only!
+            if u'/org/mpris/MediaPlayer2/Track' not in dict['Metadata']['mpris:trackid']:
+                return
+
+            artists = dict['Metadata']['xesam:artist']
+            appends = []
+
+            for artist in artists:
+                try:
+                    appends.append(config['artist_appends'][artist])
+                except KeyError:
+                    dbg_print('No appendings for %s' % (artist,))
+                    pass
+
+            message_args = (
+                ', '.join(artists),
+                dict['Metadata']['xesam:title'],
+                ' '.join(appends),
+                CODE_SHORT_URL,
+            )
+            message = '#nowplaying %s - %s %s %s' % message_args
+            message = re.sub(r'\s+', ' ', message)
+
+            dbg_print('Authenticating to send message: "%s"' % (message))
+
+            api = tweepy.API(auth)
+            api.update_status(message)
+
+            # Do not resume waiting for a whole minute
+            time.sleep(60)
+    except tweepy.TweepError as e:
+        print('%s %s' % (time.strftime('[%x %X]'), e))
+    except KeyError as e:
+        dbg_print('KeyError: %s' % e)
+        if verbose:
+            traceback.print_exc()
+        pass
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
+
+    args = parser.parse_args()
+    verbose = args.verbose
+
+    try:
+        with open(CONF_FILE) as f:
+            dbg_print('Opened "%s"' % (CONF_FILE))
+
+            conf_keys = [
+                'consumer_key',
+                'consumer_secret',
+                'access_token',
+                'access_token_secret',
+            ]
+            config = yaml.load(f.read())
+
+            for key in conf_keys:
+                if key not in config:
+                    raise ConfigError('"%s" key missing in configuration' % (key))
+                elif type(config[key]) is not str:
+                    raise ConfigError('All keys in configuration are supposed to be strings (erroneous key: "%s")' % (key))
+                else:
+                    dbg_print('Read "%s" value' % (key))
+    except IOError:
+        raise ConfigError('Please set up a YAML file with the following keys: %s at %s' % (', '.join(conf_keys), conf_file,))
+
+    auth = tweepy.OAuthHandler(config['consumer_key'], config['consumer_secret'])
+    auth.set_access_token(config['access_token'], config['access_token_secret'])
+
+    dbg_print('Successfully authenticated with Twitter')
+
+    DBusGMainLoop(set_as_default=True)
+
+    session_bus = dbus.SessionBus()
+    session_bus.add_signal_receiver(handler,
+                                    dbus_interface='org.freedesktop.DBus.Properties',
+                                    signal_name='PropertiesChanged',
+                                    path='/org/mpris/MediaPlayer2')
+
+    loop = gobject.MainLoop()
+    loop.run()
