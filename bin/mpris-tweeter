@@ -115,16 +115,17 @@ if __name__ == '__main__':
     args = parser.parse_args()
     verbose = args.verbose
 
+    conf_keys = [
+        'consumer_key',
+        'consumer_secret',
+        'access_token',
+        'access_token_secret',
+    ]
+
     try:
         with open(CONF_FILE) as f:
             dbg_print('Opened "%s"' % (CONF_FILE))
 
-            conf_keys = [
-                'consumer_key',
-                'consumer_secret',
-                'access_token',
-                'access_token_secret',
-            ]
             config = yaml.load(f.read())
 
             for key in conf_keys:
@@ -135,7 +136,7 @@ if __name__ == '__main__':
                 else:
                     dbg_print('Read "%s" value' % (key))
     except IOError:
-        raise ConfigError('Please set up a YAML file with the following keys: %s at %s' % (', '.join(conf_keys), conf_file,))
+        raise ConfigError('Please set up a YAML file with the following keys: %s at %s' % (', '.join(conf_keys), CONF_FILE,))
 
     auth = tweepy.OAuthHandler(config['consumer_key'], config['consumer_secret'])
     auth.set_access_token(config['access_token'], config['access_token_secret'])
