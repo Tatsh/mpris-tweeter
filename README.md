@@ -36,6 +36,8 @@ artist_appends:
         - '@LaraCScandar'
 ```
 
+With this configuration, if *Britney Spears* is an artist in a song played, the tweet will have *@britneyspears #perfume* in it.
+
 I recommend using quotes for all values under this key. The primary reason is because in YAML a `@` symbol must be escaped.
 
 # KDE usage (to make this a daemon)
