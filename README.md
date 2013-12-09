@@ -1,3 +1,16 @@
+# Requirements
+
+* Python 2.7
+* [D-Bus](http://dbus.freedesktop.org/) (comes with virtually every distro)
+* [tweepy](http://tweepy.github.com/)
+
+## Gentoo
+
+```bash
+# echo 'dev-python/tweepy ~amd64'
+emerge dev-python/tweepy
+```
+
 # Configuration
 Before running the script, set up a file `~/.mpris-twitter-listener.yml` that looks like the following:
 
