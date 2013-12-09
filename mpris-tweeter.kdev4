@@ -1,0 +1,4 @@
+[Project]
+Manager=KDevGenericManager
+Name=mpris-tweeter
+VersionControl=kdevgit
