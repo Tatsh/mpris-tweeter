@@ -44,7 +44,7 @@ import traceback
 import tweepy
 import yaml
 
-CODE_SHORT_URL = 'http://bit.ly/YfR1Nm'
+CODE_SHORT_URL = 'http://l.tat.sh/18vD40A'
 CONF_FILE = expanduser('~/.mpris-twitter-listener.yml')
 
 # Initialised in __main__
