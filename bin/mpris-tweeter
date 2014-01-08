@@ -159,4 +159,9 @@ if __name__ == '__main__':
                                     path='/org/mpris/MediaPlayer2')
 
     loop = gobject.MainLoop()
-    loop.run()
+
+    try:
+        loop.run()
+    except KeyboardInterrupt:
+        dbg_print('Quitting (^C)')
+        pass
